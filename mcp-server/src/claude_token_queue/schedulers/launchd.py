@@ -5,7 +5,9 @@
 claude 절대경로·CTQ_* 설정·확장 PATH를 박아 넣어야 러너가 claude를 찾고 동일 설정으로 동작한다.
 """
 from __future__ import annotations
+import datetime
 import os
+import plistlib
 import shutil
 import subprocess
 import sys
@@ -115,6 +117,39 @@ class LaunchdScheduler(Scheduler):
             "loaded": self.label in (r.stdout or ""),
             "plist": str(self.plist),
             "plist_exists": self.plist.exists(),
+        }
+
+    def next_run(self) -> dict | None:
+        """plist의 StartCalendarInterval을 읽어 다음 발생 시각 계산."""
+        if not self.plist.exists():
+            return None
+        try:
+            data = plistlib.loads(self.plist.read_bytes())
+        except Exception:
+            return None
+        sci = data.get("StartCalendarInterval")
+        if not sci:
+            return None
+        entries = sci if isinstance(sci, list) else [sci]
+        now = datetime.datetime.now()
+        candidates = []
+        for e in entries:
+            h = e.get("Hour")
+            if h is None:
+                continue
+            m = e.get("Minute", 0)
+            cand = now.replace(hour=int(h), minute=int(m), second=0, microsecond=0)
+            if cand <= now:
+                cand += datetime.timedelta(days=1)  # 오늘 시각 지났으면 내일
+            candidates.append(cand)
+        if not candidates:
+            return None
+        nxt = min(candidates)
+        return {
+            "loaded": self.status()["loaded"],
+            "scheduled_time": f"{nxt.hour:02d}:{nxt.minute:02d}",
+            "next_run": nxt.isoformat(timespec="minutes"),
+            "in_minutes": int((nxt - now).total_seconds() // 60),
         }
 
     def trigger_now(self) -> bool:

@@ -15,3 +15,7 @@ class Scheduler(ABC):
     @abstractmethod
     def status(self) -> dict:
         """현재 예약 상태 반환."""
+
+    def next_run(self) -> dict | None:
+        """다음 실행 예정 정보 (시각 등). 미지원 백엔드는 None."""
+        return None

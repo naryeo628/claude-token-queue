@@ -108,11 +108,42 @@ def cancel_schedule() -> dict:
 
 @mcp.tool()
 def get_status() -> dict:
-    """큐 + 예약 상태 한눈에."""
+    """큐 + 예약 상태 + 다음 실행 예정 시각 한눈에."""
+    sched = get_scheduler()
     return {
         "queue_count": _store.count(),
         "tasks": [j.to_dict() for j in _store.list()],
-        "schedule": get_scheduler().status(),
+        "schedule": sched.status(),
+        "next_run": sched.next_run(),
+    }
+
+
+@mcp.tool()
+def get_plan() -> dict:
+    """'무엇을 언제 실행할지' 조회. 큐의 작업을 실행 순서대로,
+    다음 실행 예정 시각과 함께 반환한다.
+    큐는 예약 시각에 1번부터 순차 실행된다(이전 작업이 끝나면 다음).
+    """
+    sched = get_scheduler()
+    nxt = sched.next_run()
+    jobs = _store.list()
+    plan = [
+        {"order": j.index, "cwd": j.cwd, "prompt": j.prompt,
+         "starts": "예약 시각" if j.index == 1 else "앞 작업 완료 후"}
+        for j in jobs
+    ]
+    if not jobs:
+        note = "큐 비어 있음."
+    elif not nxt or not nxt.get("loaded"):
+        note = "예약 없음 → schedule_run('HH:MM')으로 시각을 지정해야 실행됨."
+    else:
+        note = (f"{nxt['scheduled_time']}({nxt['in_minutes']}분 뒤)에 "
+                f"{len(jobs)}건을 순서대로 실행 예정.")
+    return {
+        "count": len(jobs),
+        "next_run": nxt,
+        "plan": plan,
+        "note": note,
     }
 
 

@@ -1,6 +1,6 @@
 [project]
 name = "claude-token-queue-mcp"
-version = "0.1.0"
+version = "0.2.0"
 description = "MCP server for claude-token-queue — 토큰 한도로 막힌 Claude Code 작업을 큐에 넣고 리셋 시각에 자동 재실행"
 readme = "README.md"
 requires-python = ">=3.10"
