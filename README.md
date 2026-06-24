@@ -50,6 +50,16 @@ ctq clear                                             # 큐 비우기
 - **대화형 TUI 자체는 자동 캡처 불가** — 한도 막힘을 잡는 훅이 없음. 자동화하려면 작업을 `ctq run` 으로 돌릴 것.
 - `claude -p` 는 1회성 헤드리스 = 세션 컨텍스트 없음. 큐 프롬프트는 독립적으로 이해되게 작성(티켓번호·파일경로 포함).
 
+## MCP 서버 (Claude Code 등에서 도구로 사용)
+
+같은 기능을 MCP 도구로 노출하는 파이썬 서버가 [`mcp-server/`](mcp-server/)에 있다. CLI(`ctq`)와 같은 큐·예약 상태를 공유한다.
+
+```bash
+claude mcp add ctq -- uvx --from "git+https://github.com/naryeo628/claude-token-queue.git#subdirectory=mcp-server" ctq-mcp
+```
+
+채팅으로 `run_task` / `enqueue_task` / `schedule_run` / `get_status` 등 호출. 자세한 도구·설정은 [mcp-server/README.md](mcp-server/README.md).
+
 ## 제거
 
 ```bash
