@@ -8,20 +8,23 @@
   :root{
     --bg:#0d1117; --panel:#161b22; --border:#30363d;
     --fg:#e6edf3; --muted:#8b949e; --accent:#d2691e; --accent2:#58a6ff;
-    --code:#0b0e14;
+    --code:#0b0e14; --green:#3fb950;
   }
   *{box-sizing:border-box}
   body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
     background:var(--bg);color:var(--fg);line-height:1.6}
-  .wrap{max-width:820px;margin:0 auto;padding:64px 20px 96px}
+  .wrap{max-width:860px;margin:0 auto;padding:64px 20px 96px}
   h1{font-size:2.4rem;margin:0 0 6px;letter-spacing:-.5px}
-  .tag{color:var(--muted);font-size:1.05rem;margin-bottom:36px}
-  h2{font-size:1.25rem;margin:40px 0 14px;border-bottom:1px solid var(--border);padding-bottom:8px}
+  .tag{color:var(--muted);font-size:1.05rem;margin-bottom:14px}
+  .badge{display:inline-block;font-size:.75rem;color:var(--green);border:1px solid var(--green);
+    border-radius:20px;padding:2px 10px;margin-bottom:30px}
+  h2{font-size:1.25rem;margin:44px 0 14px;border-bottom:1px solid var(--border);padding-bottom:8px}
+  h3{font-size:1rem;margin:22px 0 8px;color:var(--accent)}
   p{color:var(--fg)}
   .muted{color:var(--muted)}
   .install{display:flex;gap:8px;align-items:stretch;background:var(--code);
-    border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin:8px 0 4px}
-  .install code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.95rem;
+    border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin:8px 0}
+  .install code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.88rem;
     color:var(--fg);overflow-x:auto;white-space:nowrap;flex:1;display:flex;align-items:center}
   .install code .p{color:var(--accent)}
   button.copy{background:var(--accent);color:#fff;border:0;border-radius:8px;padding:8px 14px;
@@ -30,76 +33,99 @@
   pre{background:var(--code);border:1px solid var(--border);border-radius:10px;
     padding:16px;overflow-x:auto}
   code,pre{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
-  pre code{color:#c9d1d9;font-size:.9rem}
+  pre code{color:#c9d1d9;font-size:.88rem}
   .cmd{color:var(--accent2)}
-  ul{padding-left:20px}
+  ul,ol{padding-left:22px}
   li{margin:6px 0}
   table{border-collapse:collapse;width:100%;margin-top:8px}
-  th,td{border:1px solid var(--border);padding:8px 12px;text-align:left;font-size:.92rem}
+  th,td{border:1px solid var(--border);padding:8px 12px;text-align:left;font-size:.9rem}
   th{background:var(--panel)}
-  .feat{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-top:16px}
+  td code{color:var(--accent2)}
+  .feat{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-top:16px}
   .card{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:16px}
   .card b{color:var(--accent)}
+  .flow{counter-reset:step;list-style:none;padding:0}
+  .flow li{counter-increment:step;position:relative;padding:10px 0 10px 44px;border-bottom:1px solid var(--border)}
+  .flow li:last-child{border-bottom:0}
+  .flow li::before{content:counter(step);position:absolute;left:0;top:10px;width:28px;height:28px;
+    background:var(--accent);color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.85rem}
   footer{margin-top:56px;color:var(--muted);font-size:.85rem;border-top:1px solid var(--border);padding-top:18px}
   a{color:var(--accent2);text-decoration:none}
   a:hover{text-decoration:underline}
-  .warn{background:#2d2410;border:1px solid #5c4813;border-radius:8px;padding:12px 16px;color:#e8d8a8}
+  .warn{background:#2d2410;border:1px solid #5c4813;border-radius:8px;padding:12px 16px;color:#e8d8a8;font-size:.9rem}
 </style>
 </head>
 <body>
 <div class="wrap">
   <h1>claude-token-queue</h1>
   <div class="tag">토큰 한도로 막힌 Claude Code 작업을 <b>리셋 시각에 자동 재실행</b> · macOS</div>
+  <div class="badge">● 백그라운드 자동 감지 · 무인 재실행</div>
 
   <div class="feat">
-    <div class="card"><b>자동 감지</b><br><span class="muted">래퍼가 한도 에러를 직접 보고 큐에 자동 등록</span></div>
-    <div class="card"><b>정시 재실행</b><br><span class="muted">launchd가 지정 시각에 큐를 자동으로 비움</span></div>
-    <div class="card"><b>안전망</b><br><span class="muted">아직 한도면 보존 후 10분 뒤 재시도</span></div>
-    <div class="card"><b>1회성</b><br><span class="muted">큐 비우면 예약 자동 해제</span></div>
+    <div class="card"><b>자동 감지</b><br><span class="muted">데몬이 세션 기록을 보고 한도(429)를 스스로 감지 — 래퍼 불필요</span></div>
+    <div class="card"><b>세션 resume</b><br><span class="muted">원래 세션을 이어서 재실행, 대화 맥락 유지</span></div>
+    <div class="card"><b>무인 동작</b><br><span class="muted">사용자가 아무것도 안 해도 리셋 시각에 자동 실행</span></div>
+    <div class="card"><b>조회 가능</b><br><span class="muted">무엇이 언제 실행될지 언제든 확인</span></div>
   </div>
 
-  <h2>설치</h2>
+  <h2>어떻게 동작하나 (무인 자동)</h2>
+  <ol class="flow">
+    <li>클로드 앱으로 작업하다 토큰이 소진된다 (하나/여러 세션 중단 또는 신규 요청 실패).</li>
+    <li>워처 데몬이 트랜스크립트에서 한도 이벤트(<code>isApiErrorMessage</code>+<code>429</code>)를 감지.</li>
+    <li>실패한 프롬프트 + cwd + sessionId + 리셋시각(<code>resets 7:40pm (Asia/Seoul)</code>)을 추출해 큐에 등록.</li>
+    <li>가장 이른 리셋 시각에 launchd 트리거를 건다.</li>
+    <li>리셋 시각이 되면 <code>claude --resume &lt;sessionId&gt; -p</code> 로 원래 세션을 이어 자동 재실행.</li>
+    <li>언제든 <code>get_plan</code> 으로 "무엇이 언제 실행될지" 확인.</li>
+  </ol>
+  <p class="muted">감지는 <b>데몬 설치 이후</b> 발생한 한도만 대상(과거 일괄 실행 방지). 중복은 (sessionId, promptId)로 제거.</p>
+
+  <h2>설치 — MCP + 감지 데몬 (권장)</h2>
+  <h3>1. 고정 설치 (데몬용)</h3>
   <div class="install">
-    <code id="inst"><span class="p">curl</span> -fsSL https://raw.githubusercontent.com/naryeo628/claude-token-queue/main/install.sh | bash</code>
-    <button class="copy" onclick="cp('inst',this)">복사</button>
+    <code id="i1"><span class="p">uv</span> tool install --from "git+https://github.com/naryeo628/claude-token-queue.git#subdirectory=mcp-server" claude-token-queue-mcp</code>
+    <button class="copy" onclick="cp('i1',this)">복사</button>
   </div>
-  <p class="muted">설치 후 새 터미널을 열거나 <code>source ~/.zshrc</code>. 전제: <code>claude</code> CLI가 PATH에 있어야 함.</p>
+  <h3>2. Claude Code에 MCP 등록</h3>
+  <div class="install">
+    <code id="i2"><span class="p">claude</span> mcp add ctq -- ctq-mcp</code>
+    <button class="copy" onclick="cp('i2',this)">복사</button>
+  </div>
+  <h3>3. 감지 데몬 켜기</h3>
+  <p class="muted">Claude Code 채팅에서 → <b>"install_watcher 실행해줘"</b>. 끝. 이후 무인 동작.</p>
 
-  <h2>사용법</h2>
-<pre><code><span class="cmd">ctq run</span> "LQ-7180 쿼리 최적화 검토하고 결과 알려줘"   # 실행. 한도면 자동 큐+예약
-<span class="cmd">ctq add</span> "리팩터 X 마무리"                            # 큐에만 수동 등록
-<span class="cmd">ctq at</span>  14:30                                     # 재실행 시각 예약 (+30m, +2h 가능)
-<span class="cmd">ctq status</span>                                          # 큐/예약 확인
-<span class="cmd">ctq log</span>                                             # 실행 로그
-<span class="cmd">ctq drain</span>                                           # 지금 즉시 큐 실행
-<span class="cmd">ctq cancel</span>                                          # 예약 취소
-<span class="cmd">ctq clear</span>                                           # 큐 비우기</code></pre>
-
-  <h2>흐름</h2>
-  <ul>
-    <li><code>ctq run "..."</code> — 한도 걸리면 자동으로 큐 등록 + (가능하면) 리셋 시각 예약</li>
-    <li>시각 자동추출 실패 시 → <code>ctq at 14:30</code> 직접 입력</li>
-    <li>리셋 시각에 launchd가 큐를 순서대로 실행, 끝나면 예약 자동 해제</li>
-  </ul>
-
-  <h2>구성</h2>
+  <h2>MCP 도구</h2>
   <table>
-    <tr><th>명령</th><th>역할</th></tr>
-    <tr><td><code>ctq run</code></td><td>claude -p 실행 → 한도 감지 → 큐 등록 + 시각 자동 예약</td></tr>
-    <tr><td><code>ctq add</code></td><td>큐에 <code>cwd|||프롬프트</code> 추가</td></tr>
-    <tr><td><code>ctq at</code></td><td>입력 시각으로 launchd plist 작성·로드</td></tr>
-    <tr><td><code>ctq drain</code></td><td>예약 시각에 큐 비움 (한도 미해제면 보존+재예약)</td></tr>
+    <tr><th>도구</th><th>설명</th></tr>
+    <tr><td><code>install_watcher</code></td><td>감지 데몬 설치 — 한도 자동 감지+큐+예약 시작</td></tr>
+    <tr><td><code>watcher_status</code> / <code>uninstall_watcher</code></td><td>데몬 상태 / 제거</td></tr>
+    <tr><td><code>scan_now</code></td><td>지금 즉시 트랜스크립트 스캔</td></tr>
+    <tr><td><code>get_plan</code></td><td><b>무엇을 언제 실행할지</b> — 실행 순서 + 다음 예정시각</td></tr>
+    <tr><td><code>get_status</code></td><td>큐 + 예약 + next_run + 데몬 상태</td></tr>
+    <tr><td><code>run_task</code> / <code>enqueue_task</code></td><td>지금 실행(한도면 자동 큐) / 큐에만 등록</td></tr>
+    <tr><td><code>schedule_run</code> / <code>cancel_schedule</code></td><td>재실행 예약(HH:MM,+30m) / 해제</td></tr>
+    <tr><td><code>remove_task</code> / <code>clear_tasks</code> / <code>get_logs</code></td><td>제거 / 비우기 / 로그</td></tr>
   </table>
+
+  <h2>가벼운 CLI (선택)</h2>
+  <p class="muted">데몬 없이 수동으로만 쓰고 싶으면 bash CLI:</p>
+  <div class="install">
+    <code id="i3"><span class="p">curl</span> -fsSL https://raw.githubusercontent.com/naryeo628/claude-token-queue/main/install.sh | bash</code>
+    <button class="copy" onclick="cp('i3',this)">복사</button>
+  </div>
+<pre><code><span class="cmd">ctq run</span> "작업"      # 실행, 한도면 자동 큐+예약
+<span class="cmd">ctq at</span>  14:30       # 재실행 시각 예약
+<span class="cmd">ctq status</span>          # 큐/예약/다음 실행 예정 확인</code></pre>
 
   <h2>한계</h2>
   <div class="warn">
-    리셋 시각 <b>자동추출은 보장 안 됨</b>(에러 포맷 버전차) → 실패 시 <code>ctq at</code>로 직접 입력.<br>
-    대화형 TUI 자체는 자동 캡처 불가 → 자동화하려면 <code>ctq run</code>으로 실행.<br>
-    <code>claude -p</code>는 1회성 헤드리스 = 세션 컨텍스트 없음 → 프롬프트 독립적으로 작성.
+    macOS launchd 전용 (Linux는 cron/systemd 백엔드 추가 필요).<br>
+    감지 데몬은 고정 설치(<code>uv tool install</code>) 필요 — ephemeral uvx로는 KeepAlive가 깨질 수 있음.<br>
+    완전 자동 실행: 리셋 시각에 큐의 명령이 무인 실행됨 — 끄려면 <code>uninstall_watcher</code>.
   </div>
 
   <footer>
-    <a href="https://github.com/naryeo628/claude-token-queue">GitHub →</a> · MIT License
+    <a href="https://github.com/naryeo628/claude-token-queue">GitHub →</a> ·
+    <a href="https://github.com/naryeo628/claude-token-queue/tree/main/mcp-server">mcp-server</a> · MIT License
   </footer>
 </div>
 <script>
