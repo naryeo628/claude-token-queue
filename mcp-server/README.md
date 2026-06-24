@@ -44,7 +44,8 @@ claude mcp add ctq -- ctq-mcp
 | `remove_task(index)` | 특정 작업 제거 |
 | `clear_tasks()` | 큐 비우기 |
 | `cancel_schedule()` | 예약 해제 |
-| `get_status()` | 큐 + 예약 상태 |
+| `get_plan()` | **무엇을 언제 실행할지** — 작업을 실행 순서대로 + 다음 예정시각 |
+| `get_status()` | 큐 + 예약 상태 + 다음 실행 예정(next_run) |
 | `get_logs(lines?)` | 러너 로그 tail |
 
 ### 사용 예 (채팅)
