@@ -50,15 +50,21 @@ ctq clear                                             # 큐 비우기
 - **대화형 TUI 자체는 자동 캡처 불가** — 한도 막힘을 잡는 훅이 없음. 자동화하려면 작업을 `ctq run` 으로 돌릴 것.
 - `claude -p` 는 1회성 헤드리스 = 세션 컨텍스트 없음. 큐 프롬프트는 독립적으로 이해되게 작성(티켓번호·파일경로 포함).
 
-## MCP 서버 (Claude Code 등에서 도구로 사용)
+## MCP 서버 + 자동 감지 데몬 (권장)
 
-같은 기능을 MCP 도구로 노출하는 파이썬 서버가 [`mcp-server/`](mcp-server/)에 있다. CLI(`ctq`)와 같은 큐·예약 상태를 공유한다.
+[`mcp-server/`](mcp-server/) 의 파이썬 서버는 MCP 도구 + **백그라운드 감지 데몬**을 제공한다.
+데몬을 켜두면 클로드 앱이 토큰 한도에 걸리는 순간 **사용자가 아무것도 안 해도** 실패한 프롬프트를
+자동으로 큐에 담고, 리셋 시각에 **원래 세션을 resume 해서 자동 재실행**한다.
 
 ```bash
-claude mcp add ctq -- uvx --from "git+https://github.com/naryeo628/claude-token-queue.git#subdirectory=mcp-server" ctq-mcp
+# 1) 고정 설치 (데몬용)
+uv tool install --from "git+https://github.com/naryeo628/claude-token-queue.git#subdirectory=mcp-server" claude-token-queue-mcp
+# 2) Claude Code에 등록
+claude mcp add ctq -- ctq-mcp
+# 3) 채팅에서: "install_watcher 실행해줘"
 ```
 
-채팅으로 `run_task` / `enqueue_task` / `schedule_run` / `get_status` 등 호출. 자세한 도구·설정은 [mcp-server/README.md](mcp-server/README.md).
+조회는 `get_plan`(무엇을 언제 실행할지) / `get_status`. 자세한 건 [mcp-server/README.md](mcp-server/README.md).
 
 ## 제거
 

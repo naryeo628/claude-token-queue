@@ -2,89 +2,105 @@
 
 `claude-token-queue` 기능을 **MCP 도구**로 노출하는 파이썬 서버. Claude Code 같은 MCP 클라이언트에서 채팅으로 작업 큐잉·예약·실행 관리.
 
-bash CLI(`ctq`)와 **같은 상태(`~/.claude-queue/`, 같은 launchd 라벨)를 공유**하므로 둘을 섞어 써도 된다.
+핵심: **백그라운드 감지 데몬(워처)** 이 클로드 앱 세션 기록(`~/.claude/projects/**/*.jsonl`)을 감시하다가,
+어떤 세션이든 토큰 한도(429)에 걸리면 **사용자가 아무것도 안 해도** 실패한 프롬프트를 자동으로 큐에 담고
+리셋 시각에 원래 세션을 resume 해서 자동 재실행한다.
 
-## 설치 (Claude Code에 등록)
+## 동작 흐름 (무인 자동)
 
-### A. uvx — 클론 없이 바로 (권장)
+1. 클로드 앱으로 작업하다 토큰이 소진된다 (하나/여러 세션이 중단되거나 신규 요청 실패).
+2. 워처가 트랜스크립트에서 한도 이벤트(`isApiErrorMessage`+`apiErrorStatus:429`)를 감지한다.
+3. 실패한 사람 프롬프트 + cwd + sessionId + 리셋시각(`resets 7:40pm (Asia/Seoul)`)을 추출해 큐에 등록한다.
+4. 가장 이른 리셋 시각에 launchd 트리거를 건다.
+5. 리셋 시각이 되면 `claude --resume <sessionId> -p "<프롬프트>"` 로 원래 세션을 이어 자동 재실행한다.
+6. 언제든 `get_plan` 으로 "무엇이 언제 실행될지" 확인할 수 있다.
+
+> 감지는 **데몬 설치 이후** 발생한 한도만 대상으로 한다(과거 일괄 실행 방지). 중복은 `(sessionId, promptId)`로 제거.
+
+## 설치
+
+### 1) 안정 설치 (데몬용, 권장)
+KeepAlive 데몬은 항상 떠 있어야 하므로 ephemeral `uvx`가 아니라 **고정 설치**가 필요하다.
+
 ```bash
-claude mcp add ctq -- uvx --from "git+https://github.com/naryeo628/claude-token-queue.git#subdirectory=mcp-server" ctq-mcp
+uv tool install --from "git+https://github.com/naryeo628/claude-token-queue.git#subdirectory=mcp-server" claude-token-queue-mcp
 ```
 
-### B. 로컬 설치 (개발)
+→ `~/.local/bin/` 에 `ctq-mcp`, `ctq-watch`, `ctq-runner` 설치됨.
+
+### 2) Claude Code에 MCP 등록
 ```bash
-cd mcp-server
-uv pip install -e .        # 또는: pip install -e .
 claude mcp add ctq -- ctq-mcp
 ```
-
-### C. .mcp.json 수동 등록
+또는 `.mcp.json` / `~/.claude.json`:
 ```json
-{
-  "mcpServers": {
-    "ctq": {
-      "command": "uvx",
-      "args": ["--from", "git+https://github.com/naryeo628/claude-token-queue.git#subdirectory=mcp-server", "ctq-mcp"]
-    }
-  }
-}
+{ "mcpServers": { "ctq": {
+  "command": "ctq-mcp",
+  "env": { "CTQ_CLAUDE_BIN": "/absolute/path/to/claude" }
+}}}
 ```
 
-확인: `claude mcp list` → `ctq` connected.
+### 3) 감지 데몬 켜기
+Claude Code 채팅에서: **"install_watcher 실행해줘"** → 데몬 설치(launchd KeepAlive). 끝.
 
 ## 도구
 
 | 도구 | 설명 |
 |------|------|
-| `run_task(prompt, cwd?, auto_schedule?)` | 지금 실행. 한도면 자동 큐 등록 + 리셋 시각 추출해 예약 |
-| `enqueue_task(prompt, cwd?)` | 큐에만 등록 (실행 안 함) |
-| `schedule_run(at)` | 재실행 예약. `at` = `HH:MM` / `+30m` / `+2h` |
-| `run_queue_now()` | 예약 안 기다리고 지금 즉시 큐 드레인 |
+| `install_watcher()` | **감지 데몬 설치** — 한도 자동 감지+큐+예약 시작 |
+| `uninstall_watcher()` | 데몬 제거 (큐 유지) |
+| `watcher_status()` | 데몬 동작 상태 |
+| `scan_now()` | 지금 즉시 트랜스크립트 스캔 |
+| `get_plan()` | **무엇을 언제 실행할지** — 실행 순서 + 다음 예정시각 |
+| `get_status()` | 큐 + 예약 + next_run + 데몬 상태 |
 | `list_tasks()` | 대기 작업 목록 |
-| `remove_task(index)` | 특정 작업 제거 |
-| `clear_tasks()` | 큐 비우기 |
+| `get_logs(lines?, which?)` | 로그 tail (`which`=`runner`/`watcher`) |
+| `run_task(prompt, cwd?, auto_schedule?)` | 지금 실행. 한도면 자동 큐+예약 |
+| `enqueue_task(prompt, cwd?, session_id?)` | 큐에만 등록 (session_id 주면 resume) |
+| `schedule_run(at)` | 재실행 예약. `at`=`HH:MM`/`+30m`/`+2h` |
+| `run_queue_now()` | 지금 즉시 큐 드레인 |
+| `remove_task(index)` / `clear_tasks()` | 작업 제거 / 큐 비우기 |
 | `cancel_schedule()` | 예약 해제 |
-| `get_plan()` | **무엇을 언제 실행할지** — 작업을 실행 순서대로 + 다음 예정시각 |
-| `get_status()` | 큐 + 예약 상태 + 다음 실행 예정(next_run) |
-| `get_logs(lines?)` | 러너 로그 tail |
-
-### 사용 예 (채팅)
-> "이 작업 토큰 한도 걸리면 큐에 넣고 15시에 다시 돌려줘"
-→ 모델이 `enqueue_task` + `schedule_run("15:00")` 호출.
 
 ## 환경변수 (전부 선택)
 
 | 변수 | 기본값 | 용도 |
 |------|--------|------|
-| `CTQ_DIR` | `~/.claude-queue` | 상태 디렉토리 (CLI와 공유) |
-| `CTQ_LABEL` | `com.user.claudequeue` | launchd 라벨 |
-| `CTQ_PLIST` | `~/Library/LaunchAgents/<label>.plist` | plist 경로 |
+| `CTQ_DIR` | `~/.claude-queue` | 상태 디렉토리 |
+| `CTQ_PROJECTS_DIR` | `~/.claude/projects` | 감시할 트랜스크립트 경로 |
+| `CTQ_WATCH_INTERVAL` | `30` | 워처 스캔 주기(초) |
+| `CTQ_RESUME` | `1` | 재실행 시 세션 resume (0이면 헤드리스) |
+| `CTQ_LABEL` | `com.user.claudequeue` | 재실행 트리거 launchd 라벨 |
+| `CTQ_WATCHER_LABEL` | `com.claude-token-queue.watcher` | 감지 데몬 라벨 |
 | `CTQ_CLAUDE_BIN` | `claude` | claude 실행 파일 경로 |
-| `CTQ_LIMIT_PATTERN` | `usage limit\|rate.?limit\|...` | 한도 감지 정규식 |
+| `CTQ_LIMIT_PATTERN` | `usage limit\|rate.?limit\|...` | 재실행 결과의 한도 감지 정규식 |
 | `CTQ_RETRY_DELAY_MIN` | `10` | 정각에도 한도면 재시도 간격(분) |
-| `CTQ_DEFAULT_CWD` | (서버 cwd) | cwd 미지정 시 기본 작업 디렉토리 |
 | `CTQ_SCHEDULER` | (OS 자동) | 스케줄러 백엔드 강제 (`launchd`) |
 
 ## 구조 / 확장
 
 ```
 src/claude_token_queue/
-  config.py            설정 (env 오버라이드)
-  util.py              시각 파싱 · 큐 락(mkdir, bash와 호환)
-  store.py             JobStore — 파일 기반(cwd|||prompt). SQLite 등으로 교체 가능
+  config.py        설정 (env 오버라이드)
+  util.py          시각·리셋메시지 파싱(타임존 변환) · 큐 락(mkdir)
+  transcript.py    트랜스크립트 파싱 → 한도 이벤트(프롬프트/cwd/세션/리셋) 추출
+  store.py         JobStore — JSONL(풍부한 필드) + 레거시 jobs.txt 읽기
   schedulers/
-    base.py            Scheduler 추상 인터페이스
-    launchd.py         macOS launchd 구현
-    __init__.py        팩토리 (cron/systemd 추가 지점)
-  runner.py            큐 드레인 (launchd가 호출), 한도 미해제면 재예약
-  server.py            FastMCP 서버 + 도구
+    base.py        Scheduler 추상 인터페이스
+    launchd.py     macOS launchd (EnvironmentVariables 임베드, next_run)
+    __init__.py    팩토리 (cron/systemd 추가 지점)
+  watcher.py       감지 데몬 루프 (스캔 → 큐 → 예약)
+  daemon.py        워처를 launchd KeepAlive 에이전트로 설치/제거
+  runner.py        큐 드레인 — resume 우선, 한도 미해제면 재예약
+  server.py        FastMCP 서버 + 도구 15종
 ```
 
-- **새 OS 지원**: `schedulers/base.Scheduler` 구현 → `get_scheduler()` 팩토리에 등록 (예 Linux `cron.py`).
+- **새 OS 지원**: `schedulers/base.Scheduler` 구현 → 팩토리 등록 (예 Linux `cron.py`).
 - **저장소 교체**: `JobStore` 인터페이스 유지하면 SQLite/Redis 등으로 교체 가능.
-- **한도 메시지 포맷 변경**: `CTQ_LIMIT_PATTERN`만 수정.
+- **한도 포맷 변경**: 감지는 구조적 필드, 리셋시각은 `util.parse_reset_message` 정규식만 손보면 됨.
 
 ## 한계
-- 현재 스케줄러는 macOS launchd만 구현 (Linux는 cron/systemd 백엔드 추가 필요).
-- `claude -p`는 1회성 헤드리스 = 세션 컨텍스트 없음 → 프롬프트 독립 작성.
-- 리셋 시각 자동추출은 에러 포맷 의존 → 실패 시 `schedule_run`으로 직접.
+- macOS launchd 전용 (Linux는 cron/systemd 백엔드 추가 필요).
+- 감지 데몬은 고정 설치(`uv tool install`) 필요 — ephemeral uvx로는 KeepAlive가 깨질 수 있음.
+- resume 재실행은 원래 프롬프트를 그대로 다시 보냄(중단된 작업 이어가기). 세션이 사라졌으면 헤드리스로 폴백.
+- 완전 자동 실행: 리셋 시각에 큐의 명령이 무인으로 실행됨 — 끄려면 `uninstall_watcher` / `cancel_schedule`.

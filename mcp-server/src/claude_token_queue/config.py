@@ -35,6 +35,23 @@ RETRY_DELAY_MIN: int = int(os.environ.get("CTQ_RETRY_DELAY_MIN", "10"))
 # 스케줄러 백엔드 강제 지정 (launchd | 미지정 시 OS로 자동 판별)
 SCHEDULER_BACKEND: str | None = os.environ.get("CTQ_SCHEDULER")
 
+# --- 트랜스크립트 감시(워처) ---
+# 클로드 앱 세션 기록 디렉토리
+PROJECTS_DIR: Path = _env_path("CTQ_PROJECTS_DIR", "~/.claude/projects")
+# 정식 큐 (JSONL, 세션ID·리셋시각 등 풍부한 필드). bash CLI의 jobs.txt는 레거시로 함께 읽음.
+QUEUE: Path = QDIR / "queue.jsonl"
+# 워처 상태 (처리한 에러 키, 시작시각, 파일 mtime)
+WATCH_STATE: Path = QDIR / "watch-state.json"
+# 항상 떠 있는 감지 데몬(launchd KeepAlive) 라벨/플리스트
+WATCHER_LABEL: str = os.environ.get("CTQ_WATCHER_LABEL", "com.claude-token-queue.watcher")
+WATCHER_PLIST: Path = _env_path(
+    "CTQ_WATCHER_PLIST", f"~/Library/LaunchAgents/{WATCHER_LABEL}.plist"
+)
+# 워처 스캔 주기(초)
+WATCH_INTERVAL: int = int(os.environ.get("CTQ_WATCH_INTERVAL", "30"))
+# 재실행 시 원래 세션 resume 여부 (0/false면 헤드리스)
+RESUME: bool = os.environ.get("CTQ_RESUME", "1") not in ("0", "false", "False", "")
+
 
 def ensure_dir() -> None:
     QDIR.mkdir(parents=True, exist_ok=True)

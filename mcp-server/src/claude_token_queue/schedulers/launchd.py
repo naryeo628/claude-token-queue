@@ -11,6 +11,7 @@ import plistlib
 import shutil
 import subprocess
 import sys
+from pathlib import Path
 from xml.sax.saxutils import escape
 
 from .. import config
@@ -36,9 +37,21 @@ _PLIST_TMPL = """<?xml version="1.0" encoding="UTF-8"?>
 """
 
 
+def _resolve_cmd(name: str, module: str) -> list[str]:
+    """안정 설치된 콘솔 스크립트 우선(uv tool install → ~/.local/bin).
+    없으면 현재 파이썬 -m 모듈로 폴백. launchd는 항상 떠 있어야 하므로
+    uvx 임시환경(sys.executable)이 GC되면 깨질 수 있어 안정 경로를 선호한다."""
+    exe = shutil.which(name)
+    if exe:
+        return [exe]
+    cand = Path.home() / ".local" / "bin" / name
+    if cand.exists():
+        return [str(cand)]
+    return [sys.executable, "-m", module]
+
+
 def _runner_args() -> list[str]:
-    # 현재 파이썬으로 러너 모듈 실행. 절대경로가 plist에 박혀 재부팅/로그아웃 후에도 동작.
-    return [sys.executable, "-m", "claude_token_queue.runner"]
+    return _resolve_cmd("ctq-runner", "claude_token_queue.runner")
 
 
 def _claude_abs() -> str:
@@ -50,6 +63,7 @@ def _runner_path() -> str:
     dirs = [
         os.path.dirname(_claude_abs()),
         os.path.dirname(sys.executable),
+        str(Path.home() / ".local" / "bin"),
         "/opt/homebrew/bin",
         "/usr/local/bin",
         "/usr/bin",

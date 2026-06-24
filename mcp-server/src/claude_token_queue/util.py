@@ -49,6 +49,53 @@ def parse_reset(text: str) -> tuple[int, int] | None:
     return None
 
 
+def extract_text(content) -> str:
+    """클로드 메시지 content(str 또는 [{type,text}, ...])에서 텍스트만 뽑아 합침."""
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        parts = []
+        for it in content:
+            if isinstance(it, dict):
+                parts.append(it.get("text") or it.get("content") or "")
+            else:
+                parts.append(str(it))
+        return " ".join(p for p in parts if p)
+    return str(content or "")
+
+
+def parse_reset_message(text) -> tuple[int, int] | None:
+    """한도 에러 메시지에서 리셋 시각 추출 → 로컬 (hour, minute).
+    예: "You've hit your session limit · resets 7:40pm (Asia/Seoul)".
+    타임존이 있으면 로컬 시각으로 변환. 실패하면 None."""
+    text = extract_text(text)
+    m = re.search(r"reset[s]?\s+(\d{1,2})(?::(\d{2}))?\s*([apAP])m", text)
+    if not m:
+        return None
+    h, mm, ap = int(m.group(1)), int(m.group(2) or 0), m.group(3).lower()
+    if ap == "p" and h < 12:
+        h += 12
+    if ap == "a" and h == 12:
+        h = 0
+    if not (0 <= h <= 23 and 0 <= mm <= 59):
+        return None
+    tzm = re.search(r"\(([^)]+)\)", text)
+    if tzm:
+        try:
+            from zoneinfo import ZoneInfo
+
+            src = ZoneInfo(tzm.group(1).strip())
+            now_src = datetime.datetime.now(src)
+            target = now_src.replace(hour=h, minute=mm, second=0, microsecond=0)
+            if target <= now_src:
+                target += datetime.timedelta(days=1)
+            local = target.astimezone()  # 로컬 타임존으로 변환
+            return local.hour, local.minute
+        except Exception:
+            pass
+    return h, mm
+
+
 @contextlib.contextmanager
 def queue_lock(timeout: float = 30.0):
     """bash 러너와 동일한 mkdir 원자 락 → CLI/MCP 동시 드레인 방지."""
