@@ -69,7 +69,7 @@ Claude Code 채팅에서: **"install_watcher 실행해줘"** → 데몬 설치(l
 | `CTQ_DIR` | `~/.claude-queue` | 상태 디렉토리 |
 | `CTQ_PROJECTS_DIR` | `~/.claude/projects` | 감시할 트랜스크립트 경로 |
 | `CTQ_WATCH_INTERVAL` | `30` | 워처 스캔 주기(초) |
-| `CTQ_RESUME` | `0` | 재실행 시 세션 resume (구 CLI는 replay 400 잦아 기본 off=새 세션) |
+| `CTQ_RESUME` | `1` | 재실행 시 원래 세션 resume(컨텍스트 복원). claude CLI 2.x 필요 (1.x는 replay 400 → 0으로 두고 새 세션) |
 | `CTQ_CLAUDE_MODEL` | `claude-opus-4-8` | 재실행 모델 (구 CLI 기본모델 죽어 명시 필수) |
 | `CTQ_MONITOR` | `1` | 재실행 시 모니터링 터미널 자동 오픈 |
 | `CTQ_SKIP_PERMISSIONS` | `1` | 무인 실행이 실제 작업하도록 도구 권한 자동승인 (보안 주의) |
@@ -105,5 +105,6 @@ src/claude_token_queue/
 ## 한계
 - macOS launchd 전용 (Linux는 cron/systemd 백엔드 추가 필요).
 - 감지 데몬은 고정 설치(`uv tool install`) 필요 — ephemeral uvx로는 KeepAlive가 깨질 수 있음.
-- resume 재실행은 원래 프롬프트를 그대로 다시 보냄(중단된 작업 이어가기). 세션이 사라졌으면 헤드리스로 폴백.
+- resume 재실행은 **claude CLI 2.x 필요**(1.x 헤드리스 resume은 히스토리 내 끊긴 tool_use로 400). 2.x면 원래 세션 컨텍스트를 복원해 이어감. 세션 못 열면 새 세션 폴백.
+- CTQ_CLAUDE_BIN은 2.x claude 절대경로로 (구버전이면 죽은 기본모델 404 → CTQ_CLAUDE_MODEL 명시 필수).
 - 완전 자동 실행: 리셋 시각에 큐의 명령이 무인으로 실행됨 — 끄려면 `uninstall_watcher` / `cancel_schedule`.

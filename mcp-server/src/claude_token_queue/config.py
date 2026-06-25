@@ -49,8 +49,9 @@ WATCHER_PLIST: Path = _env_path(
 )
 # 워처 스캔 주기(초)
 WATCH_INTERVAL: int = int(os.environ.get("CTQ_WATCH_INTERVAL", "30"))
-# 재실행 시 원래 세션 resume 여부. 구버전 CLI는 resume replay가 400나기 쉬워 기본 off(새 세션).
-RESUME: bool = os.environ.get("CTQ_RESUME", "0") not in ("0", "false", "False", "")
+# 재실행 시 원래 세션 resume 여부. claude CLI 2.x는 헤드리스 resume로 컨텍스트 복원됨 → 기본 on.
+# (구버전 1.x는 resume replay가 400나니, 그 경우 CTQ_RESUME=0으로 두고 새 세션 실행.)
+RESUME: bool = os.environ.get("CTQ_RESUME", "1") not in ("0", "false", "False", "")
 # 재실행에 쓸 모델 (구 CLI 기본모델이 죽어 404 → 유효 모델 명시 필수)
 CLAUDE_MODEL: str = os.environ.get("CTQ_CLAUDE_MODEL", "claude-opus-4-8")
 # 재실행 결과·라이브 로그 저장 위치
