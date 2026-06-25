@@ -69,7 +69,10 @@ Claude Code 채팅에서: **"install_watcher 실행해줘"** → 데몬 설치(l
 | `CTQ_DIR` | `~/.claude-queue` | 상태 디렉토리 |
 | `CTQ_PROJECTS_DIR` | `~/.claude/projects` | 감시할 트랜스크립트 경로 |
 | `CTQ_WATCH_INTERVAL` | `30` | 워처 스캔 주기(초) |
-| `CTQ_RESUME` | `1` | 재실행 시 세션 resume (0이면 헤드리스) |
+| `CTQ_RESUME` | `0` | 재실행 시 세션 resume (구 CLI는 replay 400 잦아 기본 off=새 세션) |
+| `CTQ_CLAUDE_MODEL` | `claude-opus-4-8` | 재실행 모델 (구 CLI 기본모델 죽어 명시 필수) |
+| `CTQ_MONITOR` | `1` | 재실행 시 모니터링 터미널 자동 오픈 |
+| `CTQ_SKIP_PERMISSIONS` | `1` | 무인 실행이 실제 작업하도록 도구 권한 자동승인 (보안 주의) |
 | `CTQ_LABEL` | `com.user.claudequeue` | 재실행 트리거 launchd 라벨 |
 | `CTQ_WATCHER_LABEL` | `com.claude-token-queue.watcher` | 감지 데몬 라벨 |
 | `CTQ_CLAUDE_BIN` | `claude` | claude 실행 파일 경로 |

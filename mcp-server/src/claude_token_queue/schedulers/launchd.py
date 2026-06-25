@@ -80,15 +80,21 @@ def _runner_path() -> str:
 
 
 def _env_vars() -> dict[str, str]:
-    # 러너가 동일 설정으로 동작하도록 현재 config 값을 그대로 전파
+    # 러너/워처가 동일 설정으로 동작하도록 현재 config 값을 그대로 전파
     return {
         "PATH": _runner_path(),
         "CTQ_DIR": str(config.QDIR),
         "CTQ_LABEL": config.LABEL,
         "CTQ_PLIST": str(config.PLIST),
         "CTQ_CLAUDE_BIN": _claude_abs(),
+        "CTQ_CLAUDE_MODEL": config.CLAUDE_MODEL,
         "CTQ_LIMIT_PATTERN": config.LIMIT_PATTERN,
         "CTQ_RETRY_DELAY_MIN": str(config.RETRY_DELAY_MIN),
+        "CTQ_RESUME": "1" if config.RESUME else "0",
+        "CTQ_MONITOR": "1" if config.MONITOR else "0",
+        "CTQ_SKIP_PERMISSIONS": "1" if config.SKIP_PERMISSIONS else "0",
+        "CTQ_PROJECTS_DIR": str(config.PROJECTS_DIR),
+        "CTQ_WATCH_INTERVAL": str(config.WATCH_INTERVAL),
     }
 
 

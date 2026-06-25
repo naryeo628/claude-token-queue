@@ -49,8 +49,16 @@ WATCHER_PLIST: Path = _env_path(
 )
 # 워처 스캔 주기(초)
 WATCH_INTERVAL: int = int(os.environ.get("CTQ_WATCH_INTERVAL", "30"))
-# 재실행 시 원래 세션 resume 여부 (0/false면 헤드리스)
-RESUME: bool = os.environ.get("CTQ_RESUME", "1") not in ("0", "false", "False", "")
+# 재실행 시 원래 세션 resume 여부. 구버전 CLI는 resume replay가 400나기 쉬워 기본 off(새 세션).
+RESUME: bool = os.environ.get("CTQ_RESUME", "0") not in ("0", "false", "False", "")
+# 재실행에 쓸 모델 (구 CLI 기본모델이 죽어 404 → 유효 모델 명시 필수)
+CLAUDE_MODEL: str = os.environ.get("CTQ_CLAUDE_MODEL", "claude-opus-4-8")
+# 재실행 결과·라이브 로그 저장 위치
+RESULTS_DIR: Path = QDIR / "results"
+# 재실행 시 모니터링 터미널 자동 오픈 (있을 때 실황 보기)
+MONITOR: bool = os.environ.get("CTQ_MONITOR", "1") not in ("0", "false", "False", "")
+# 무인 실행이 실제 작업(편집·명령)을 하도록 도구 권한 자동승인. 보안 주의 — 끄려면 0.
+SKIP_PERMISSIONS: bool = os.environ.get("CTQ_SKIP_PERMISSIONS", "1") not in ("0", "false", "False", "")
 
 
 def ensure_dir() -> None:
