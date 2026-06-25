@@ -60,6 +60,13 @@ RESULTS_DIR: Path = QDIR / "results"
 MONITOR: bool = os.environ.get("CTQ_MONITOR", "1") not in ("0", "false", "False", "")
 # 무인 실행이 실제 작업(편집·명령)을 하도록 도구 권한 자동승인. 보안 주의 — 끄려면 0.
 SKIP_PERMISSIONS: bool = os.environ.get("CTQ_SKIP_PERMISSIONS", "1") not in ("0", "false", "False", "")
+# 작업당 최대 실행 시간(초). 초과 시 죽이고 에러 처리(백그라운드 대기 hang 방지).
+RUN_TIMEOUT: int = int(os.environ.get("CTQ_RUN_TIMEOUT", "1200"))
+# 같은 작업 연속 에러 허용 횟수. 초과 시 큐에서 제거하고 "수동 필요" 알림(무한 재시도 방지).
+MAX_ATTEMPTS: int = int(os.environ.get("CTQ_MAX_ATTEMPTS", "3"))
+# 텔레그램 보고 (토큰은 repo에 두지 말고 env/plist로만 주입). chat은 비밀 아님.
+TELEGRAM_TOKEN: str = os.environ.get("CTQ_TELEGRAM_TOKEN", "")
+TELEGRAM_CHAT: str = os.environ.get("CTQ_TELEGRAM_CHAT", "")
 
 
 def ensure_dir() -> None:

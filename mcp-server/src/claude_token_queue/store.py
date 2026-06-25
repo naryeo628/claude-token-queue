@@ -20,6 +20,7 @@ class Job:
     source: str = "manual"            # watcher | run | manual | legacy
     resume: bool = False              # 원래 세션 resume 여부
     created_at: str | None = None
+    attempts: int = 0                 # 연속 에러 횟수 (MAX_ATTEMPTS 초과 시 제거)
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -85,6 +86,7 @@ class JobStore:
             source=r.get("source", "manual"),
             resume=bool(r.get("resume", False)),
             created_at=r.get("created_at"),
+            attempts=int(r.get("attempts", 0)),
         )
 
     # --- 공개 API ---

@@ -10,7 +10,7 @@ import json
 import os
 import time
 
-from . import config
+from . import config, telegram
 from .schedulers import get_scheduler
 from .store import JobStore
 from .transcript import find_limit_events, iter_session_files
@@ -103,8 +103,10 @@ def tick() -> int:
         h, m = min_reset
         get_scheduler().schedule(h, m)
         _log(f"{new}건 큐 등록 → 재실행 예약 {h:02d}:{m:02d}")
+        telegram.send(f"🕒 토큰 한도 감지 · {new}건 큐 등록 → {h:02d}:{m:02d} 자동 재실행 예약")
     elif new:
         _log(f"{new}건 큐 등록 (리셋 시각 미파싱 → 수동 예약 필요)")
+        telegram.send(f"🕒 토큰 한도 감지 · {new}건 큐 등록 (리셋 시각 미파싱 — 수동 예약 필요)")
     _save_state(state)
     return new
 

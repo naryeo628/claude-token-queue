@@ -95,6 +95,10 @@ def _env_vars() -> dict[str, str]:
         "CTQ_SKIP_PERMISSIONS": "1" if config.SKIP_PERMISSIONS else "0",
         "CTQ_PROJECTS_DIR": str(config.PROJECTS_DIR),
         "CTQ_WATCH_INTERVAL": str(config.WATCH_INTERVAL),
+        "CTQ_RUN_TIMEOUT": str(config.RUN_TIMEOUT),
+        "CTQ_MAX_ATTEMPTS": str(config.MAX_ATTEMPTS),
+        "CTQ_TELEGRAM_TOKEN": config.TELEGRAM_TOKEN,
+        "CTQ_TELEGRAM_CHAT": config.TELEGRAM_CHAT,
     }
 
 

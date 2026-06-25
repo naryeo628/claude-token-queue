@@ -78,6 +78,10 @@ Claude Code 채팅에서: **"install_watcher 실행해줘"** → 데몬 설치(l
 | `CTQ_CLAUDE_BIN` | `claude` | claude 실행 파일 경로 |
 | `CTQ_LIMIT_PATTERN` | `usage limit\|rate.?limit\|...` | 재실행 결과의 한도 감지 정규식 |
 | `CTQ_RETRY_DELAY_MIN` | `10` | 정각에도 한도면 재시도 간격(분) |
+| `CTQ_RUN_TIMEOUT` | `1200` | 작업당 최대 실행 시간(초). 초과 시 강제 종료(hang 방지) |
+| `CTQ_MAX_ATTEMPTS` | `3` | 연속 에러 허용 횟수. 초과 시 큐에서 제거+수동필요 알림 |
+| `CTQ_TELEGRAM_TOKEN` | (없음) | 텔레그램 봇 토큰. **repo에 두지 말 것** — env/plist로만 |
+| `CTQ_TELEGRAM_CHAT` | (없음) | 텔레그램 chat id. 둘 다 있어야 텔레그램 보고 작동 |
 | `CTQ_SCHEDULER` | (OS 자동) | 스케줄러 백엔드 강제 (`launchd`) |
 
 ## 구조 / 확장
