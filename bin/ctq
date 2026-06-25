@@ -9,15 +9,27 @@ case "$cmd" in
   at)    exec "$QDIR/schedule.sh" "$@" ;;
   drain) exec "$QDIR/runner.sh" ;;
   status)
-    echo "== 대기 작업 (실행 순서) =="
-    if [ -s "$QDIR/jobs.txt" ]; then nl -ba "$QDIR/jobs.txt"; else echo "(없음)"; fi
-    echo "== 예약 상태 =="
-    launchctl list 2>/dev/null | grep claudequeue || echo "(로드 안 됨)"
+    echo "== 정식 큐 (queue.jsonl, 워처/MCP가 쓰는 큐) =="
+    if [ -s "$QDIR/queue.jsonl" ]; then
+      python3 - "$QDIR/queue.jsonl" <<'PY'
+import json,sys
+for i,l in enumerate([x for x in open(sys.argv[1]) if x.strip()],1):
+    try: r=json.loads(l)
+    except: continue
+    print(f"  {i}. [{r.get('source','?')}] reset={r.get('reset')} session={(r.get('session_id') or '')[:8]} | {r.get('prompt','')[:60]}")
+PY
+    else echo "  (없음)"; fi
+    echo "== 레거시 큐 (jobs.txt) =="
+    if [ -s "$QDIR/jobs.txt" ]; then nl -ba "$QDIR/jobs.txt"; else echo "  (없음)"; fi
+    echo "== 감지 데몬 (워처) =="
+    launchctl list 2>/dev/null | grep -q claude-token-queue.watcher && echo "  구동 중 ✅" || echo "  꺼짐 ❌ (install_watcher 필요)"
+    echo "== 재실행 예약 =="
+    launchctl list 2>/dev/null | grep claudequeue >/dev/null && echo "  로드됨" || echo "  (로드 안 됨)"
     plist="$HOME/Library/LaunchAgents/com.user.claudequeue.plist"
     if [ -f "$plist" ]; then
       h=$(/usr/libexec/PlistBuddy -c "Print :StartCalendarInterval:Hour" "$plist" 2>/dev/null)
       m=$(/usr/libexec/PlistBuddy -c "Print :StartCalendarInterval:Minute" "$plist" 2>/dev/null)
-      [ -n "$h" ] && printf "다음 실행 예정: %02d:%02d (큐 1번부터 순서대로)\n" "$h" "${m:-0}"
+      [ -n "$h" ] && printf "  다음 실행 예정: %02d:%02d\n" "$h" "${m:-0}"
     fi
     ;;
   log)   tail -n 40 "$QDIR/runner.log" 2>/dev/null || echo "(로그 없음)" ;;
