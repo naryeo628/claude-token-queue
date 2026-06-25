@@ -66,6 +66,7 @@
     <div class="card"><b>세션 resume</b><br><span class="muted">원래 세션을 이어서 재실행, 대화 맥락 유지</span></div>
     <div class="card"><b>무인 동작</b><br><span class="muted">사용자가 아무것도 안 해도 리셋 시각에 자동 실행</span></div>
     <div class="card"><b>조회 가능</b><br><span class="muted">무엇이 언제 실행될지 언제든 확인</span></div>
+    <div class="card"><b>실황 모니터</b><br><span class="muted">리셋 때 터미널 자동 오픈 + 결과 파일/알림</span></div>
   </div>
 
   <h2>어떻게 동작하나 (무인 자동)</h2>
@@ -74,10 +75,12 @@
     <li>워처 데몬이 트랜스크립트에서 한도 이벤트(<code>isApiErrorMessage</code>+<code>429</code>)를 감지.</li>
     <li>실패한 프롬프트 + cwd + sessionId + 리셋시각(<code>resets 7:40pm (Asia/Seoul)</code>)을 추출해 큐에 등록.</li>
     <li>가장 이른 리셋 시각에 launchd 트리거를 건다.</li>
-    <li>리셋 시각이 되면 <code>claude --resume &lt;sessionId&gt; -p</code> 로 원래 세션을 이어 자동 재실행.</li>
+    <li>리셋 시각이 되면 <code>claude --resume &lt;sessionId&gt; -p</code> 로 <b>원래 세션을 이어</b> 자동 재실행(컨텍스트 복원).</li>
+    <li>동시에 <b>모니터링 터미널</b>이 떠서 실황을 보여주고(있을 때), 끝나면 결과를 <code>~/.claude-queue/results/</code>에 저장 + macOS 알림.</li>
     <li>언제든 <code>get_plan</code> 으로 "무엇이 언제 실행될지" 확인.</li>
   </ol>
-  <p class="muted">감지는 <b>데몬 설치 이후</b> 발생한 한도만 대상(과거 일괄 실행 방지). 중복은 (sessionId, promptId)로 제거.</p>
+  <p class="muted">감지는 <b>데몬 설치 이후</b> 발생한 한도만 대상(과거 일괄 실행 방지). 중복은 (sessionId, promptId)로 제거.
+  resume 컨텍스트 복원은 <b>claude CLI 2.x</b> 필요(1.x는 헤드리스 resume 400).</p>
 
   <h2>설치 — MCP + 감지 데몬 (권장)</h2>
   <h3>1. 고정 설치 (데몬용)</h3>
@@ -120,7 +123,8 @@
   <div class="warn">
     macOS launchd 전용 (Linux는 cron/systemd 백엔드 추가 필요).<br>
     감지 데몬은 고정 설치(<code>uv tool install</code>) 필요 — ephemeral uvx로는 KeepAlive가 깨질 수 있음.<br>
-    완전 자동 실행: 리셋 시각에 큐의 명령이 무인 실행됨 — 끄려면 <code>uninstall_watcher</code>.
+    <b>resume 컨텍스트 복원은 claude CLI 2.x 필요</b> (구버전은 죽은 기본모델로 404 → <code>CTQ_CLAUDE_MODEL</code> 명시, 헤드리스 resume 400). <code>CTQ_CLAUDE_BIN</code>은 2.x 절대경로로.<br>
+    완전 자동 실행: 리셋 시각에 큐 명령이 <code>--dangerously-skip-permissions</code>로 무인 실행됨(편집·명령 포함) — 끄려면 <code>uninstall_watcher</code> 또는 <code>CTQ_SKIP_PERMISSIONS=0</code>.
   </div>
 
   <footer>
