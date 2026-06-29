@@ -98,12 +98,11 @@ class JobStore:
         return len(self._read_records()) + len(self._read_legacy())
 
     def _has_key(self, session_id, prompt_id) -> bool:
-        if not (session_id and prompt_id):
-            return False
-        return any(
-            r.get("session_id") == session_id and r.get("prompt_id") == prompt_id
-            for r in self._read_records()
-        )
+        # prompt_id 단독으로 dedup → 같은 프롬프트가 여러 세션/워크트리에 걸려도 1건만.
+        # (prompt_id는 사용자 제출 단위 고유. 교차세션 동일 prompt_id = 같은 제출의 복제.)
+        if prompt_id:
+            return any(r.get("prompt_id") == prompt_id for r in self._read_records())
+        return False
 
     def add(self, prompt: str, cwd: str, *, session_id=None, prompt_id=None,
             reset=None, source="manual", resume=False, created_at=None,
