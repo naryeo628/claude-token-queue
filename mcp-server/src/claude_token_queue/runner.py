@@ -34,6 +34,14 @@ def _ts() -> str:
     return datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
 
 
+def _job_desc(job: Job, idx: int, total: int) -> str:
+    """텔레그램용 작업 설명: 어떤 요청인지(프롬프트) + 세션 + 디렉토리."""
+    prm = " ".join((job.prompt or "").split())
+    if len(prm) > 200:
+        prm = prm[:200] + "…"
+    return f"[{idx}/{total}] {prm}\n   ↳ 세션 {(job.session_id or '')[:8]} · {job.cwd}"
+
+
 def hit_limit(out: str) -> bool:
     return re.search(config.LIMIT_PATTERN, out, re.I) is not None
 
@@ -188,7 +196,7 @@ def drain() -> dict:
                 f.write(f"=== claude-token-queue 재실행 "
                         f"{datetime.datetime.now():%Y-%m-%d %H:%M:%S} · {len(jobs)}건 ===\n")
             _open_monitor(batchlog)
-            telegram.send(f"🔔 claude-token-queue 재실행 시작 · {len(jobs)}건")
+            telegram.send(f"🔔 토큰 리셋 — 큐 재실행 시작 · 총 {len(jobs)}건\n(아래로 작업별 진행/결과를 보고합니다)")
 
             remaining: list[Job] = []
             total = len(jobs)
@@ -196,24 +204,25 @@ def drain() -> dict:
                 if stopped:
                     remaining.append(job)
                     continue
+                desc = _job_desc(job, idx, total)
+                telegram.send(f"▶️ 재실행 시작\n{desc}")
                 status, res = _run_job(job, idx, total, batchlog)
-                head = job.prompt[:100]
                 if status == "limited":
                     _log("아직 한도 — 작업 보존, 중단")
                     remaining.append(job)
                     stopped = True
-                    telegram.send(f"⏳ 아직 한도 — 이후 작업 보류\n{head}")
+                    telegram.send(f"⏳ 아직 한도 — 이 작업과 이후 작업 보류(다음 리셋에 재시도)\n{desc}")
                 elif status == "error":
                     job.attempts += 1
                     errors += 1
                     if job.attempts >= config.MAX_ATTEMPTS:
                         dropped += 1
                         _log(f"{job.attempts}회 연속 에러 → 큐에서 제거(수동 필요)")
-                        telegram.send(f"⛔ {config.MAX_ATTEMPTS}회 실패 → 수동 처리 필요\n{head}\n{res[:150]}")
+                        telegram.send(f"⛔ {config.MAX_ATTEMPTS}회 실패 → 큐에서 제거, 수동 처리 필요\n{desc}\n   사유: {res[:200]}")
                     else:
                         remaining.append(job)
                         _log(f"에러({job.attempts}/{config.MAX_ATTEMPTS}) — 작업 보존")
-                        telegram.send(f"❌ 에러({job.attempts}/{config.MAX_ATTEMPTS}) 재시도 예정\n{head}\n{res[:150]}")
+                        telegram.send(f"❌ 재실행 에러({job.attempts}/{config.MAX_ATTEMPTS}) — 큐 보존, 재시도 예정\n{desc}\n   사유: {res[:200]}")
                 else:
                     done += 1
                     out_path = config.RESULTS_DIR / f"{_ts()}-{(job.session_id or 'job')[:8]}.md"
@@ -222,7 +231,7 @@ def drain() -> dict:
                         encoding="utf-8",
                     )
                     _log("완료")
-                    telegram.send(f"✅ 완료\n{head}")
+                    telegram.send(f"✅ 재실행 완료\n{desc}\n   결과: {(res or '')[:250]}")
             store._write_records([j.to_record() for j in remaining])
             store._clear_legacy()
     except TimeoutError:

@@ -83,6 +83,10 @@ def find_limit_events(path: Path) -> list[LimitEvent]:
                 break
         if not prompt:
             continue
+        # 에러 '이후'에 사람 프롬프트가 또 있으면 = 한도 풀린 뒤 대화를 계속한 것(막힌 게 아님)
+        # → 활성 대화 중 잠깐 뜬 429를 큐에 넣지 않음. 진짜로 그 에러가 마지막(세션이 멈춤)일 때만 큐잉.
+        if any(_is_human_prompt(lines[j]) for j in range(i + 1, len(lines))):
+            continue
         text = util.extract_text(o.get("message", {}).get("content"))
         events.append(LimitEvent(
             session_id=o.get("sessionId"),

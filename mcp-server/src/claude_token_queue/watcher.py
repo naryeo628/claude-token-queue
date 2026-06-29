@@ -51,6 +51,7 @@ def scan_once(state: dict, store: JobStore) -> tuple[int, tuple[int, int] | None
 
     new = 0
     resets: list[tuple[int, int]] = []
+    queued: list[dict] = []
     for p in iter_session_files():
         sp = str(p)
         try:
@@ -82,13 +83,19 @@ def scan_once(state: dict, store: JobStore) -> tuple[int, tuple[int, int] | None
             if rec is not None:
                 new += 1
                 _log(f"감지: session={ev.session_id} reset={reset_str} | {ev.prompt[:60]}")
+                queued.append({
+                    "prompt": ev.prompt,
+                    "session_id": ev.session_id or "",
+                    "cwd": ev.cwd or "",
+                    "reset": reset_str,
+                })
                 if ev.reset:
                     resets.append(ev.reset)
         mtimes[sp] = mt
 
     state["processed"] = sorted(processed)
     state["mtimes"] = mtimes
-    return new, (min(resets) if resets else None)
+    return new, (min(resets) if resets else None), queued
 
 
 def tick() -> int:
@@ -98,15 +105,27 @@ def tick() -> int:
         state["start_time"] = datetime.datetime.now().astimezone().isoformat(timespec="seconds")
         _log("워처 시작 — 이후 발생하는 한도만 감지")
     store = JobStore()
-    new, min_reset = scan_once(state, store)
-    if new and min_reset:
-        h, m = min_reset
-        get_scheduler().schedule(h, m)
-        _log(f"{new}건 큐 등록 → 재실행 예약 {h:02d}:{m:02d}")
-        telegram.send(f"🕒 토큰 한도 감지 · {new}건 큐 등록 → {h:02d}:{m:02d} 자동 재실행 예약")
-    elif new:
-        _log(f"{new}건 큐 등록 (리셋 시각 미파싱 → 수동 예약 필요)")
-        telegram.send(f"🕒 토큰 한도 감지 · {new}건 큐 등록 (리셋 시각 미파싱 — 수동 예약 필요)")
+    new, min_reset, queued = scan_once(state, store)
+    if new:
+        # 어떤 요청이 큐에 들어갔는지 상세히 텔레그램 보고
+        msg = [f"🕒 토큰 한도 감지 — 재실행 큐에 {new}건 등록"]
+        for i, q in enumerate(queued, 1):
+            prm = " ".join((q["prompt"] or "").split())
+            if len(prm) > 200:
+                prm = prm[:200] + "…"
+            msg.append(
+                f"\n{i}) {prm}\n   ↳ 세션 {q['session_id'][:8]} · {q['cwd']}"
+                + (f" · 리셋 {q['reset']}" if q["reset"] else "")
+            )
+        if min_reset:
+            h, m = min_reset
+            get_scheduler().schedule(h, m)
+            _log(f"{new}건 큐 등록 → 재실행 예약 {h:02d}:{m:02d}")
+            msg.append(f"\n⏰ {h:02d}:{m:02d}에 자동 재실행 예정 (큐 총 {store.count()}건)")
+        else:
+            _log(f"{new}건 큐 등록 (리셋 시각 미파싱 → 수동 예약 필요)")
+            msg.append("\n⚠️ 리셋 시각 자동 추출 실패 — 'ctq at HH:MM'로 수동 예약 필요")
+        telegram.send("\n".join(msg))
     _save_state(state)
     return new
 

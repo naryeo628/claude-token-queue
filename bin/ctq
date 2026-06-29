@@ -42,10 +42,13 @@ PY
     echo "예약 취소됨 (큐는 유지)"
     ;;
   clear)
-    # 정식 큐(queue.jsonl)와 레거시 큐(jobs.txt) 둘 다 비움
+    # 정식 큐(queue.jsonl)와 레거시 큐(jobs.txt) 둘 다 비우고, 재실행 예약도 해제
     : > "$QDIR/queue.jsonl"
     : > "$QDIR/jobs.txt"
-    echo "큐 비움 (queue.jsonl + jobs.txt)"
+    launchctl unload "$HOME/Library/LaunchAgents/com.user.claudequeue.plist" 2>/dev/null
+    rm -f "$HOME/Library/LaunchAgents/com.user.claudequeue.plist"
+    echo "큐 비움 (queue.jsonl + jobs.txt) + 재실행 예약 해제"
+    echo "참고: 감지 데몬이 켜져 있으면 '아직 멈춘(이후 대화 없는)' 한도 건은 다시 잡힐 수 있음"
     ;;
   *)
     cat <<'USAGE'
