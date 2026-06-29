@@ -61,6 +61,8 @@ Claude Code 채팅에서: **"install_watcher 실행해줘"** → 데몬 설치(l
 | `run_queue_now()` | 지금 즉시 큐 드레인 |
 | `remove_task(index)` / `clear_tasks()` | 작업 제거 / 큐 비우기 |
 | `cancel_schedule()` | 예약 해제 |
+| `send_telegram(text)` | 텔레그램 메시지 발송 (재실행 보고와 같은 봇/채팅) |
+| `telegram_status()` | 텔레그램 설정 상태 (토큰 미노출) |
 
 ## 환경변수 (전부 선택)
 

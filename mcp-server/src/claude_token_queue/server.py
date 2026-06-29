@@ -15,7 +15,7 @@ import os
 
 from mcp.server.fastmcp import FastMCP
 
-from . import config, util, watcher
+from . import config, telegram, util, watcher
 from .daemon import WatcherAgent
 from .runner import drain, hit_limit, run_claude
 from .schedulers import get_scheduler
@@ -109,6 +109,26 @@ def get_status() -> dict:
 def list_tasks() -> dict:
     """현재 큐에 대기 중인 작업 목록."""
     return {"count": _store.count(), "tasks": [j.to_dict() for j in _store.list()]}
+
+
+@mcp.tool()
+def send_telegram(text: str) -> dict:
+    """텔레그램으로 임의 메시지 발송. (CTQ_TELEGRAM_TOKEN/CHAT 설정돼 있어야 동작.)
+    재실행 보고와 같은 봇/채팅으로 보낸다. 수동 알림·테스트용.
+    """
+    if not telegram.enabled():
+        return {"ok": False, "note": "텔레그램 미설정 (CTQ_TELEGRAM_TOKEN/CHAT 필요)"}
+    return {"ok": telegram.send(text)}
+
+
+@mcp.tool()
+def telegram_status() -> dict:
+    """텔레그램 보고 설정 상태 (토큰은 노출 안 함)."""
+    return {
+        "enabled": telegram.enabled(),
+        "chat": config.TELEGRAM_CHAT or None,
+        "token_set": bool(config.TELEGRAM_TOKEN),
+    }
 
 
 @mcp.tool()
