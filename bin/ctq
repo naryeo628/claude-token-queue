@@ -16,7 +16,11 @@ import json,sys
 for i,l in enumerate([x for x in open(sys.argv[1]) if x.strip()],1):
     try: r=json.loads(l)
     except: continue
-    print(f"  {i}. [{r.get('source','?')}] reset={r.get('reset')} session={(r.get('session_id') or '')[:8]} | {r.get('prompt','')[:60]}")
+    # 표시는 한 줄로: 개행 제거 + 90자에서 자름(…). 전체 원문은 queue.jsonl에 온전히 저장돼 있음.
+    p=" ".join((r.get('prompt') or '').split())
+    p=(p[:90]+"…") if len(p)>90 else p
+    print(f"  {i}. [{r.get('source','?')}] reset={r.get('reset')} resume={r.get('resume')} session={(r.get('session_id') or '')[:8]}")
+    print(f"      {p}")
 PY
     else echo "  (없음)"; fi
     echo "== 레거시 큐 (jobs.txt) =="
@@ -37,7 +41,12 @@ PY
     launchctl unload "$HOME/Library/LaunchAgents/com.user.claudequeue.plist" 2>/dev/null
     echo "예약 취소됨 (큐는 유지)"
     ;;
-  clear) : > "$QDIR/jobs.txt"; echo "큐 비움" ;;
+  clear)
+    # 정식 큐(queue.jsonl)와 레거시 큐(jobs.txt) 둘 다 비움
+    : > "$QDIR/queue.jsonl"
+    : > "$QDIR/jobs.txt"
+    echo "큐 비움 (queue.jsonl + jobs.txt)"
+    ;;
   *)
     cat <<'USAGE'
 claude-token-queue — 토큰 한도로 막힌 작업을 리셋 시각에 자동 재실행
