@@ -52,8 +52,8 @@ WATCH_INTERVAL: int = int(os.environ.get("CTQ_WATCH_INTERVAL", "30"))
 # 재실행 시 원래 세션 resume 여부. claude CLI 2.x는 헤드리스 resume로 컨텍스트 복원됨 → 기본 on.
 # (구버전 1.x는 resume replay가 400나니, 그 경우 CTQ_RESUME=0으로 두고 새 세션 실행.)
 RESUME: bool = os.environ.get("CTQ_RESUME", "1") not in ("0", "false", "False", "")
-# 재실행에 쓸 모델 (구 CLI 기본모델이 죽어 404 → 유효 모델 명시 필수)
-CLAUDE_MODEL: str = os.environ.get("CTQ_CLAUDE_MODEL", "claude-opus-4-8")
+# 재실행에 쓸 모델. resume 시에는 원 세션 모델을 유지하므로 새 세션에만 적용됨.
+CLAUDE_MODEL: str = os.environ.get("CTQ_CLAUDE_MODEL", "claude-sonnet-4-6")
 # 재실행 결과·라이브 로그 저장 위치
 RESULTS_DIR: Path = QDIR / "results"
 # 재실행 시 모니터링 터미널 자동 오픈 (있을 때 실황 보기)

@@ -2,6 +2,7 @@
 from __future__ import annotations
 import contextlib
 import datetime
+import errno
 import os
 import re
 import time
@@ -96,16 +97,43 @@ def parse_reset_message(text) -> tuple[int, int] | None:
     return h, mm
 
 
+def _pid_alive(pid: int) -> bool:
+    """pid 프로세스가 살아있는지. (kill 0 = 시그널 안 보내고 존재 확인만)"""
+    try:
+        os.kill(pid, 0)
+    except OSError as e:
+        return e.errno == errno.EPERM  # 존재하지만 권한 없음 = 살아있음
+    return True
+
+
 @contextlib.contextmanager
 def queue_lock(timeout: float = 30.0):
-    """bash 러너와 동일한 mkdir 원자 락 → CLI/MCP 동시 드레인 방지."""
+    """mkdir 원자 락 → CLI/MCP/러너 동시 접근 방지.
+    락을 잡은 프로세스 pid를 락 안에 기록. 다른 쪽이 락을 만나면 그 pid가 살아있는지 보고,
+    죽었으면(러너가 비정상 종료해 락이 안 풀린 stale 상태) 락을 회수한다 → 영구 데드락 방지."""
     config.ensure_dir()
+    pidfile = config.LOCK / "pid"
     waited = 0.0
     while True:
         try:
             os.mkdir(config.LOCK)
+            with contextlib.suppress(Exception):
+                pidfile.write_text(str(os.getpid()))
             break
         except FileExistsError:
+            # 락 주인이 죽었는지 확인 → 죽었으면 stale 락 회수 후 재시도
+            stale = False
+            try:
+                holder = int(pidfile.read_text().strip())
+                stale = not _pid_alive(holder)
+            except Exception:
+                stale = False  # pid 아직 안 쓰인 생성 직후 race → 그냥 대기
+            if stale:
+                with contextlib.suppress(Exception):
+                    pidfile.unlink()
+                with contextlib.suppress(Exception):
+                    os.rmdir(config.LOCK)
+                continue
             if waited >= timeout:
                 raise TimeoutError("큐가 잠겨 있음 (드레인 진행 중일 수 있음)")
             time.sleep(0.5)
@@ -113,5 +141,7 @@ def queue_lock(timeout: float = 30.0):
     try:
         yield
     finally:
+        with contextlib.suppress(Exception):
+            pidfile.unlink()
         with contextlib.suppress(FileNotFoundError):
             os.rmdir(config.LOCK)

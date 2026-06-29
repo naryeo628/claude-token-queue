@@ -77,9 +77,11 @@ def _build_cmd(job: Job, resume: bool) -> list[str]:
     cmd = [config.CLAUDE_BIN]
     if resume and job.session_id:
         cmd += ["--resume", job.session_id]
+        # resume 시 --model 생략: 원 세션 모델과 불일치하면 rc=1 실패 → 이중실행 낭비
+    else:
+        if config.CLAUDE_MODEL:
+            cmd += ["--model", config.CLAUDE_MODEL]
     cmd += ["-p", job.prompt, "--output-format", "stream-json", "--verbose"]
-    if config.CLAUDE_MODEL:
-        cmd += ["--model", config.CLAUDE_MODEL]
     if config.SKIP_PERMISSIONS:
         cmd += ["--dangerously-skip-permissions"]
     return cmd
